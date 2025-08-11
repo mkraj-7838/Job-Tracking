@@ -29,6 +29,11 @@ Before running the application, ensure you have:
 
 2. **Install required packages**
    ```bash
+   pip install -r requirements.txt
+   ```
+   
+   Or install individually:
+   ```bash
    pip install streamlit pandas python-dotenv google-generativeai python-dateutil
    ```
 
@@ -106,10 +111,10 @@ The application uses Google's Gemini AI model to intelligently extract structure
 ```
 application_tracking/
 ├── app.py                 # Main Streamlit application
-├── job_tracker.csv        # Data storage file
+├── job_tracker.csv        # Data storage file (auto-generated)
 ├── .env                   # Environment variables (create this)
-├── README.md             # This file
-└── requirements.txt      # Python dependencies (optional)
+├── requirements.txt       # Python dependencies
+└── README.md             # This file
 ```
 
 ## 🔧 Configuration
@@ -121,6 +126,30 @@ application_tracking/
 - Data is automatically saved to `job_tracker.csv`
 - File is created automatically on first run
 - Can be opened in Excel or Google Sheets for additional analysis
+
+## 🌐 Deployment
+
+### Streamlit Cloud Deployment
+
+1. **Push to GitHub**
+   - Ensure all files including `requirements.txt` are in your repository
+   - Your `.env` file should NOT be pushed to GitHub for security
+
+2. **Deploy on Streamlit Cloud**
+   - Visit [share.streamlit.io](https://share.streamlit.io)
+   - Connect your GitHub repository
+   - Set the main file as `app.py`
+
+3. **Configure Secrets**
+   - In Streamlit Cloud, go to your app settings
+   - Add your secrets in the "Secrets" section:
+   ```toml
+   GEMINI_API_KEY = "your_api_key_here"
+   ```
+
+### Local Development
+- Use `.env` file for local development
+- Never commit your `.env` file to version control
 
 ## 🚨 Troubleshooting
 
