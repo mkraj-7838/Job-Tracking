@@ -26,7 +26,7 @@ def init_csv():
         df = pd.DataFrame(columns=[
             "Company Name", "Offer Type", "Stipend", "CTC", "Eligibility",
             "Branches", "Role", "Recruitment Process", "Application Deadline",
-            "Form Link", "Applied", "Process Completed"
+            "Form Link", "Applied", "Process Completed", "Date Added"
         ])
         df.to_csv(CSV_FILE, index=False)
 
@@ -51,8 +51,13 @@ def extract_job_details(text):
     - "branches": Eligible branches.
     - "role": Job role.
     - "recruitment_process": Description of the recruitment procedure.
-    - "application_deadline": Application deadline date and time (in ISO format YYYY-MM-DDTHH:MM, assume current year if not specified).
+    - "application_deadline": Application deadline in DD/MM/YYYY format. If time is mentioned, include it as DD/MM/YYYY HH:MM. If year is not mentioned, assume 2025. Convert any date format to DD/MM/YYYY.
     - "form_link": The application form URL.
+    
+    IMPORTANT: For dates, always convert to DD/MM/YYYY format. Examples:
+    - "10th August" becomes "10/08/2025"
+    - "Monday, 11th August, 5PM" becomes "11/08/2025 17:00"
+    - "10/08/2025" stays "10/08/2025"
     
     Return only a valid JSON object with these fields. Do not include any markdown formatting, code blocks, or extra text.
     
@@ -90,7 +95,13 @@ def extract_job_details(text):
 # Get color for deadline based on current date
 def get_deadline_color(deadline):
     try:
-        deadline_dt = parser.parse(deadline)
+        # Handle DD/MM/YYYY format with optional time
+        if "/" in deadline:
+            # Parse DD/MM/YYYY or DD/MM/YYYY HH:MM format
+            deadline_dt = parser.parse(deadline, dayfirst=True)
+        else:
+            deadline_dt = parser.parse(deadline)
+        
         now = datetime.now()
         delta = (deadline_dt - now).days
         if delta < 0:
@@ -101,6 +112,14 @@ def get_deadline_color(deadline):
             return "green"
     except:
         return "gray"
+
+# Function to delete a job entry
+def delete_job(index):
+    df = load_data()
+    df = df.drop(index).reset_index(drop=True)
+    save_data(df)
+    st.success("Job deleted successfully!")
+    st.rerun()
 
 # Streamlit UI
 st.title("Job Application Tracker")
@@ -127,7 +146,8 @@ if st.button("Parse and Add"):
                     "Application Deadline": details.get("application_deadline", "Not Specified"),
                     "Form Link": details.get("form_link", "Not Specified"),
                     "Applied": "No",
-                    "Process Completed": "No"
+                    "Process Completed": "No",
+                    "Date Added": datetime.now().strftime("%d/%m/%Y %H:%M")
                 }
                 df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 save_data(df)
@@ -144,10 +164,25 @@ st.subheader("Tracked Companies")
 df = load_data()
 
 if not df.empty:
+    # Add Date Added column if it doesn't exist (for backward compatibility)
+    if "Date Added" not in df.columns:
+        df["Date Added"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+        save_data(df)
+    
+    # Sort by Date Added (most recent first)
+    df = df.sort_values(by="Date Added", ascending=False).reset_index(drop=True)
+    
     # Create columns for layout
     for index, row in df.iterrows():
-        with st.expander(f"{row['Company Name']} ({row['Offer Type']})"):
-            col1, col2 = st.columns([3, 1])
+        deadline = row['Application Deadline']
+        color = get_deadline_color(deadline)
+        
+        # Create headline with company name and colored deadline
+        headline = f"{row['Company Name']} ({row['Offer Type']}) - Deadline: {deadline}"
+        
+        with st.expander(headline):
+            # Add colored deadline info at the top
+            col1, col2, col3 = st.columns([3, 1, 0.5])
             with col1:
                 st.write(f"**Role**: {row['Role']}")
                 st.write(f"**CTC**: {row['CTC']}")
@@ -155,8 +190,6 @@ if not df.empty:
                 st.write(f"**Eligibility**: {row['Eligibility']}")
                 st.write(f"**Branches**: {row['Branches']}")
                 st.write(f"**Recruitment Process**: {row['Recruitment Process']}")
-                deadline = row['Application Deadline']
-                color = get_deadline_color(deadline)
                 st.markdown(f"**Application Deadline**: <span style='color:{color}'>{deadline}</span>", unsafe_allow_html=True)
                 if row['Form Link'] != "Not Specified":
                     st.markdown(f"[Application Form]({row['Form Link']})")
@@ -166,9 +199,42 @@ if not df.empty:
                 # Update CSV when checkboxes change
                 df.at[index, "Applied"] = "Yes" if applied else "No"
                 df.at[index, "Process Completed"] = "Yes" if completed else "No"
+            with col3:
+                # Create unique keys for each job's delete state
+                delete_key = f"delete_{index}_{row['Company Name'].replace(' ', '_')}"
+                confirm_key = f"confirm_{index}_{row['Company Name'].replace(' ', '_')}"
+                
+                # Initialize confirmation state if not exists
+                if confirm_key not in st.session_state:
+                    st.session_state[confirm_key] = False
+                
+                if st.session_state[confirm_key]:
+                    # Show confirmation buttons
+                    st.write("**Confirm Delete?**")
+                    col3a, col3b = st.columns(2)
+                    with col3a:
+                        if st.button("✅ Yes", key=f"yes_{delete_key}", help="Confirm deletion"):
+                            # Reset confirmation state
+                            st.session_state[confirm_key] = False
+                            # Delete the job
+                            df_updated = load_data()
+                            df_updated = df_updated.drop(index).reset_index(drop=True)
+                            save_data(df_updated)
+                            st.success(f"Deleted {row['Company Name']} successfully!")
+                            st.rerun()
+                    with col3b:
+                        if st.button("❌ No", key=f"no_{delete_key}", help="Cancel deletion"):
+                            st.session_state[confirm_key] = False
+                            st.rerun()
+                else:
+                    # Show delete button
+                    if st.button("🗑️", key=delete_key, help="Delete this job"):
+                        st.session_state[confirm_key] = True
+                        st.rerun()
+                        
             save_data(df)
 else:
     st.info("No companies tracked yet. Add a job posting above.")
 
 if __name__ == "__main__":
-    st.write("Set GEMINI_API_KEY in environment variables to use the app.")
+    st.write("")
