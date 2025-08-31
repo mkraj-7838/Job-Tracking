@@ -119,7 +119,7 @@ The application automatically extracts and tracks the following information:
 | Field | Description |
 |-------|-------------|
 | Company Name | Name of the hiring company |
-| Offer Type | Type of position (FTE, Intern, PPO, etc.) |
+| Offer Type | Type of position (FTE, Intern, PPO, intern + FTE, etc.) |
 | Stipend | Monthly stipend for internships |
 | CTC | Cost to Company (annual salary) |
 | Eligibility | CGPA requirements, branch eligibility |
@@ -128,6 +128,8 @@ The application automatically extracts and tracks the following information:
 | Recruitment Process | Description of hiring process |
 | Application Deadline | Last date to apply |
 | Form Link | Application form URL |
+| POC Name | Point of Contact name |
+| POC Phone | Point of Contact phone number |
 | Applied | Status: Whether you've applied |
 | Process Completed | Status: Whether recruitment is complete |
 
@@ -138,10 +140,11 @@ The application uses Google's Gemini AI model to intelligently extract structure
 
 ### Enhanced Date Parsing
 The application supports multiple date formats:
-- **DD/MM/YYYY**: Standard format (e.g., 15/08/2025)
-- **DD.MM.YY**: European format (e.g., 15.08.25)
+- **DD/MM/YYYY**: Standard format (e.g., 10/08/2025)
+- **DD.MM.YY**: European format (e.g., 10.08.25)
+- **(DD/MM/YYYY)**: Parentheses format (e.g., (10/08/2025))
 - **Natural language**: "10th August", "Monday, 11th August, 5PM"
-- **Flexible parsing**: Automatically converts various formats to standard display
+- **Display format**: All dates are displayed in DD.MM.YY format (e.g., 10.08.25)
 
 ### Smart Deadline Tracking
 - 🔴 **Red**: Overdue applications
